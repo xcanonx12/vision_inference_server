@@ -10,6 +10,7 @@ import grpc
 import numpy as np
 
 from server.core.batch_manager import BatchManager
+from server.core.config_loader import ServerConfig
 from server.core.metrics_collector import MetricsCollector
 from server.core.model_manager import ModelManager
 from server.generated import detections_pb2, detections_pb2_grpc
@@ -30,11 +31,13 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
         metrics_collector: MetricsCollector,
         batch_manager: Optional[BatchManager] = None,
         batch_loop: Optional[asyncio.AbstractEventLoop] = None,
+        server_config: Optional[ServerConfig] = None,
     ) -> None:
         self._model_manager = model_manager
         self._metrics = metrics_collector
         self._batch_manager = batch_manager
         self._batch_loop = batch_loop
+        self._server_config = server_config or ServerConfig()
 
     # ── Helper methods ──────────────────────────────────────────────
 
@@ -74,6 +77,16 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
 
         Decodes JPEG from request, runs detection, returns serialized detections.
         """
+        # Input validation — size check before decode
+        max_bytes = self._server_config.max_image_bytes
+        if len(request.image_data) > max_bytes:
+            self._metrics.record_error("oversized_image")
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Image too large ({len(request.image_data)} bytes, max {max_bytes}).",
+            )
+            return detections_pb2.InferenceResponse()
+
         # Decode image — abort on failure for unary RPCs
         image = self._try_decode_image(request.image_data)
         if image is None:
@@ -91,7 +104,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
                 future = asyncio.run_coroutine_threadsafe(
                     self._batch_manager.submit(image), self._batch_loop
                 )
-                detections = future.result(timeout=30.0)
+                detections = future.result(timeout=self._server_config.request_timeout_seconds)
             else:
                 detector = self._model_manager.get_model(request.model_name)
                 detections = detector.predict(image)

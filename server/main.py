@@ -101,6 +101,7 @@ def serve(config_path: str = "server/config.yaml") -> None:
     servicer = InferenceServicer(
         model_manager, metrics_collector,
         batch_manager=batch_manager, batch_loop=batch_loop,
+        server_config=config.server,
     )
     detections_pb2_grpc.add_InferenceServiceServicer_to_server(servicer, grpc_server)
     grpc_server.add_insecure_port(
@@ -112,8 +113,10 @@ def serve(config_path: str = "server/config.yaml") -> None:
 
     # Graceful shutdown
     def handle_signal(signum: int, frame) -> None:
-        logger.info("Shutdown signal received (signal %d).", signum)
-        grpc_server.stop(grace=5)
+        logger.info("Shutdown signal received (signal %d). Draining...", signum)
+        event = grpc_server.stop(grace=5)
+        event.wait()
+        logger.info("gRPC server stopped.")
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, handle_signal)

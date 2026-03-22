@@ -20,6 +20,8 @@ class ServerConfig:
     grpc_port: int = 50051
     http_port: int = 8080
     max_workers: int = 4
+    request_timeout_seconds: float = 30.0
+    max_image_bytes: int = 10 * 1024 * 1024  # 10 MB
 
 
 @dataclass
@@ -187,6 +189,8 @@ def load_config(config_path: str) -> AppConfig:
         grpc_port=raw_server.get("grpc_port", 50051),
         http_port=raw_server.get("http_port", 8080),
         max_workers=raw_server.get("max_workers", 4),
+        request_timeout_seconds=raw_server.get("request_timeout_seconds", 30.0),
+        max_image_bytes=raw_server.get("max_image_bytes", 10 * 1024 * 1024),
     )
 
     inference_config = InferenceConfig(
