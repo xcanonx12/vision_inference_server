@@ -117,3 +117,49 @@ class TestFetchConfig:
         assert c._input_width == 320
         assert c._input_height == 320
         assert result == mock_config
+
+
+class TestStreamPredict:
+    def test_stream_predict_raises_if_not_connected(self):
+        c = InferenceClient()
+        with pytest.raises(RuntimeError):
+            list(c.stream_predict(iter([])))
+
+    def test_stream_predict_calls_stub(self):
+        c = InferenceClient()
+        c._stub = MagicMock()
+        c._input_width = 640
+        c._input_height = 640
+
+        # Mock stub.StreamPredict to return empty iterator
+        c._stub.StreamPredict.return_value = iter([])
+
+        result = list(c.stream_predict(iter([])))
+        assert result == []
+        c._stub.StreamPredict.assert_called_once()
+
+    def test_stream_predict_yields_detections(self):
+        c = InferenceClient()
+        c._stub = MagicMock()
+        c._input_width = 640
+        c._input_height = 640
+
+        mock_det = MagicMock()
+        mock_det.bbox = [10.0, 20.0, 100.0, 200.0]
+        mock_det.confidence = 0.9
+        mock_det.class_id = 0
+
+        mock_response = MagicMock()
+        mock_response.detections = [mock_det]
+        mock_response.image_width = 640
+        mock_response.image_height = 480
+
+        c._stub.StreamPredict.return_value = iter([mock_response])
+
+        frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)]
+        results = list(c.stream_predict(iter(frames)))
+
+        import supervision as sv
+        assert len(results) == 1
+        assert isinstance(results[0], sv.Detections)
+        assert len(results[0]) == 1

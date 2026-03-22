@@ -8,7 +8,7 @@ must be accessible (same directory or on sys.path).
 
 import logging
 import time
-from typing import Optional
+from typing import Iterator, Optional
 
 import cv2
 import grpc
@@ -182,6 +182,36 @@ class InferenceClient:
             confidence=confidence,
             class_id=class_id,
         )
+
+    def stream_predict(
+        self,
+        frame_generator: Iterator[np.ndarray],
+    ) -> Iterator[sv.Detections]:
+        """Run streaming inference over a frame generator.
+
+        Args:
+            frame_generator: Iterator yielding BGR images as numpy arrays.
+
+        Yields:
+            sv.Detections for each frame.
+
+        Raises:
+            RuntimeError: If not connected.
+        """
+        if self._stub is None:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        def request_generator():
+            for frame in frame_generator:
+                image_bytes = self._prepare_image(frame)
+                yield detections_pb2.InferenceRequest(
+                    image_data=image_bytes,
+                    width=self._input_width,
+                    height=self._input_height,
+                )
+
+        for response in self._stub.StreamPredict(request_generator()):
+            yield self._deserialize_response(response)
 
     def close(self) -> None:
         """Close the gRPC channel."""
