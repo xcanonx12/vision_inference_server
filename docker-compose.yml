@@ -3,19 +3,29 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
+      target: production
+    restart: unless-stopped
     ports:
       - "50051:50051"
       - "8080:8080"
     volumes:
-      - ./models:/models
-      - ./server/config.yaml:/app/server/config.yaml
+      - ./models:/models:ro
+      - ./server/config.yaml:/app/server/config.yaml:ro
     environment:
       - ROBOFLOW_API_KEY=${ROBOFLOW_API_KEY:-}
-    # Uncomment for GPU support:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        # Uncomment for GPU support:
+        # reservations:
+        #   devices:
+        #     - driver: nvidia
+        #       count: 1
+        #       capabilities: [gpu]

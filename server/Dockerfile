@@ -24,7 +24,7 @@ FROM python:3.11-slim-bookworm AS production
 
 WORKDIR /app
 
-# Install system dependencies for OpenCV
+# Install system dependencies for OpenCV + curl for healthcheck
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libgl1 libglib2.0-0 curl && \
     rm -rf /var/lib/apt/lists/*
@@ -39,6 +39,10 @@ COPY --from=builder /app/server/generated/ server/generated/
 # Copy application code
 COPY server/ server/
 COPY client/ client/
+
+# Non-root user for security
+RUN useradd --create-home appuser
+USER appuser
 
 EXPOSE 50051 8080
 
