@@ -16,12 +16,41 @@ logger = logging.getLogger(__name__)
 class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
     """gRPC servicer for inference requests.
 
-    Handles Predict (unary) and GetServerConfig RPCs.
-    StreamPredict is stubbed for Phase 2.
+    Handles Predict (unary), StreamPredict (bidirectional streaming),
+    and GetServerConfig RPCs.
     """
 
     def __init__(self, model_manager: ModelManager) -> None:
         self._model_manager = model_manager
+
+    # ── Helper methods ──────────────────────────────────────────────
+
+    def _try_decode_image(self, image_data: bytes) -> np.ndarray | None:
+        """Decode JPEG bytes, returning None on failure (no gRPC abort)."""
+        if not image_data:
+            return None
+        buf = np.frombuffer(image_data, dtype=np.uint8)
+        return cv2.imdecode(buf, cv2.IMREAD_COLOR)
+
+    def _build_detection_response(
+        self, image: np.ndarray, detections, inference_time_ms: float
+    ) -> detections_pb2.InferenceResponse:
+        """Build an InferenceResponse proto from detections."""
+        response = detections_pb2.InferenceResponse(
+            image_width=image.shape[1],
+            image_height=image.shape[0],
+            inference_time_ms=inference_time_ms,
+        )
+        for i in range(len(detections)):
+            det = detections_pb2.Detection(
+                bbox=detections.xyxy[i].tolist(),
+                confidence=float(detections.confidence[i]),
+                class_id=int(detections.class_id[i]),
+            )
+            response.detections.append(det)
+        return response
+
+    # ── Unary RPC ───────────────────────────────────────────────────
 
     def Predict(
         self,
@@ -32,9 +61,13 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
 
         Decodes JPEG from request, runs detection, returns serialized detections.
         """
-        # Decode image
-        image = self._decode_image(request.image_data, context)
+        # Decode image — abort on failure for unary RPCs
+        image = self._try_decode_image(request.image_data)
         if image is None:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "Empty or invalid image data. Ensure it is valid JPEG.",
+            )
             return detections_pb2.InferenceResponse()
 
         # Run inference
@@ -48,21 +81,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             return detections_pb2.InferenceResponse()
 
         inference_time_ms = (time.perf_counter() - start) * 1000
-
-        # Build response
-        response = detections_pb2.InferenceResponse(
-            image_width=image.shape[1],
-            image_height=image.shape[0],
-            inference_time_ms=inference_time_ms,
-        )
-
-        for i in range(len(detections)):
-            det = detections_pb2.Detection(
-                bbox=detections.xyxy[i].tolist(),
-                confidence=float(detections.confidence[i]),
-                class_id=int(detections.class_id[i]),
-            )
-            response.detections.append(det)
+        response = self._build_detection_response(image, detections, inference_time_ms)
 
         logger.debug(
             "Predict: %d detections in %.1fms",
@@ -70,12 +89,40 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
         )
         return response
 
+    # ── Bidirectional streaming RPC ─────────────────────────────────
+
     def StreamPredict(self, request_iterator, context):
-        """Bidirectional streaming — stub for Phase 2."""
-        context.abort(
-            grpc.StatusCode.UNIMPLEMENTED,
-            "StreamPredict will be available in Phase 2",
-        )
+        """Bidirectional streaming inference.
+
+        Processes each frame as it arrives and yields the response immediately.
+        Bad frames yield an empty response rather than killing the stream.
+        """
+        for request in request_iterator:
+            image = self._try_decode_image(request.image_data)
+            if image is None:
+                logger.warning("StreamPredict: failed to decode frame, skipping")
+                yield detections_pb2.InferenceResponse()
+                continue
+
+            start = time.perf_counter()
+            try:
+                detector = self._model_manager.get_active_model()
+                detections = detector.predict(image)
+            except Exception as e:
+                logger.error("StreamPredict inference failed: %s", e)
+                yield detections_pb2.InferenceResponse()
+                continue
+
+            inference_time_ms = (time.perf_counter() - start) * 1000
+            response = self._build_detection_response(
+                image, detections, inference_time_ms
+            )
+
+            logger.debug(
+                "StreamPredict: %d detections in %.1fms",
+                len(detections), inference_time_ms,
+            )
+            yield response
 
     def GetServerConfig(
         self,
@@ -95,27 +142,3 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             num_classes=info.get("num_classes", 0),
         )
 
-    def _decode_image(
-        self,
-        image_data: bytes,
-        context: grpc.ServicerContext,
-    ) -> np.ndarray | None:
-        """Decode JPEG bytes to BGR numpy array."""
-        if not image_data:
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                "Empty image data",
-            )
-            return None
-
-        buf = np.frombuffer(image_data, dtype=np.uint8)
-        image = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-
-        if image is None:
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                "Failed to decode image. Ensure it is valid JPEG.",
-            )
-            return None
-
-        return image
