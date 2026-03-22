@@ -53,6 +53,10 @@ class BaseDetector(ABC):
         Returns:
             sv.Detections.
         """
+        if self._backend is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} has no backend. Override predict() directly."
+            )
         original_shape = image.shape[:2]
         raw_output = self._backend.infer(image)
         return self.postprocess(raw_output, original_shape)

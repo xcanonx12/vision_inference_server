@@ -39,7 +39,12 @@ class RFDETRDetector(BaseDetector):
         import rfdetr
 
         class_name = RFDETR_VARIANT_MAP.get(self._config.name, "RFDETRBase")
-        model_cls = getattr(rfdetr, class_name)
+        model_cls = getattr(rfdetr, class_name, None)
+        if model_cls is None:
+            raise ValueError(
+                f"RF-DETR variant '{class_name}' not found in rfdetr library. "
+                f"Available: {[k for k in dir(rfdetr) if k.startswith('RFDETR')]}"
+            )
 
         kwargs = {}
         if self._config.path:

@@ -77,7 +77,7 @@ def _validate_model_config(model: ModelConfig) -> None:
             f"Invalid source '{model.source}'. Must be one of: {VALID_SOURCES}"
         )
 
-    if model.source == "local" and not model.path:
+    if model.source == "local" and not model.path and model.type != "rfdetr":
         raise ValueError("model.path is required when source is 'local'")
 
     if model.source == "roboflow":
