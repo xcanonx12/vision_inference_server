@@ -14,6 +14,7 @@ message InferenceRequest {
   bytes image_data = 1;
   int32 width = 2;
   int32 height = 3;
+  string model_name = 4;  // target model (empty = default)
 }
 
 message InferenceResponse {

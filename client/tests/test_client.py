@@ -119,6 +119,66 @@ class TestFetchConfig:
         assert result == mock_config
 
 
+class TestPredictModelName:
+    def test_predict_sends_model_name(self):
+        c = InferenceClient()
+        c._stub = MagicMock()
+        c._input_width = 640
+        c._input_height = 640
+
+        # Mock Predict to return empty response
+        mock_response = MagicMock()
+        mock_response.detections = []
+        c._stub.Predict.return_value = mock_response
+
+        img = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        c.predict(img, model_name="detector")
+
+        # Check that the request included model_name
+        call_args = c._stub.Predict.call_args
+        request = call_args[0][0]
+        assert request.model_name == "detector"
+
+    def test_predict_sends_empty_model_name_by_default(self):
+        c = InferenceClient()
+        c._stub = MagicMock()
+        c._input_width = 640
+        c._input_height = 640
+
+        mock_response = MagicMock()
+        mock_response.detections = []
+        c._stub.Predict.return_value = mock_response
+
+        img = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        c.predict(img)
+
+        call_args = c._stub.Predict.call_args
+        request = call_args[0][0]
+        assert request.model_name == ""
+
+    def test_stream_predict_sends_model_name(self):
+        c = InferenceClient()
+        c._stub = MagicMock()
+        c._input_width = 640
+        c._input_height = 640
+
+        # We need to capture the request generator passed to StreamPredict
+        captured_requests = []
+
+        def capture_stream(gen):
+            for req in gen:
+                captured_requests.append(req)
+            return iter([])
+
+        c._stub.StreamPredict.side_effect = capture_stream
+
+        frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)]
+        list(c.stream_predict(iter(frames), model_name="small-det"))
+
+        assert len(captured_requests) == 1
+        assert captured_requests[0].model_name == "small-det"
+
+
 class TestStreamPredict:
     def test_stream_predict_raises_if_not_connected(self):
         c = InferenceClient()

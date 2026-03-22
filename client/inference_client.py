@@ -115,11 +115,12 @@ class InferenceClient:
         )
         return config
 
-    def predict(self, image: np.ndarray) -> sv.Detections:
+    def predict(self, image: np.ndarray, model_name: str = "") -> sv.Detections:
         """Run inference on a single image.
 
         Args:
             image: BGR image as numpy array (any size).
+            model_name: Target model name. Empty string uses the server default.
 
         Returns:
             sv.Detections from the server.
@@ -135,6 +136,7 @@ class InferenceClient:
             image_data=image_bytes,
             width=self._input_width,
             height=self._input_height,
+            model_name=model_name,
         )
 
         response = self._stub.Predict(request)
@@ -186,11 +188,13 @@ class InferenceClient:
     def stream_predict(
         self,
         frame_generator: Iterator[np.ndarray],
+        model_name: str = "",
     ) -> Iterator[sv.Detections]:
         """Run streaming inference over a frame generator.
 
         Args:
             frame_generator: Iterator yielding BGR images as numpy arrays.
+            model_name: Target model name. Empty string uses the server default.
 
         Yields:
             sv.Detections for each frame.
@@ -208,6 +212,7 @@ class InferenceClient:
                     image_data=image_bytes,
                     width=self._input_width,
                     height=self._input_height,
+                    model_name=model_name,
                 )
 
         for response in self._stub.StreamPredict(request_generator()):

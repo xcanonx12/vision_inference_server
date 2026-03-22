@@ -60,6 +60,7 @@ class AppConfig:
     model: ModelConfig
     inference: InferenceConfig
     warmup: WarmupConfig
+    models: list[ModelConfig] | None = None  # multi-model mode
 
 
 def _validate_model_config(model: ModelConfig) -> None:
@@ -93,6 +94,40 @@ def _validate_model_config(model: ModelConfig) -> None:
             )
 
 
+def _parse_model_config(raw_model: dict) -> ModelConfig:
+    """Parse a ModelConfig from a raw dict.
+
+    Args:
+        raw_model: Dictionary with model configuration fields.
+
+    Returns:
+        Validated ModelConfig instance.
+
+    Raises:
+        ValueError: If required fields are missing.
+    """
+    if "type" not in raw_model:
+        raise ValueError("model.type is required")
+    if "input_width" not in raw_model or "input_height" not in raw_model:
+        raise ValueError("model.input_width and model.input_height are required")
+
+    return ModelConfig(
+        name=raw_model.get("name", "unnamed"),
+        type=raw_model["type"],
+        backend=raw_model.get("backend", "pytorch"),
+        source=raw_model.get("source", "local"),
+        path=raw_model.get("path"),
+        version=raw_model.get("version", "1.0.0"),
+        roboflow_project=raw_model.get("roboflow_project"),
+        roboflow_version=raw_model.get("roboflow_version"),
+        input_width=raw_model["input_width"],
+        input_height=raw_model["input_height"],
+        confidence_threshold=raw_model.get("confidence_threshold", 0.5),
+        iou_threshold=raw_model.get("iou_threshold", 0.45),
+        trt_fp16=raw_model.get("trt_fp16", False),
+    )
+
+
 def load_config(config_path: str) -> AppConfig:
     """Load and validate configuration from a YAML file.
 
@@ -113,37 +148,39 @@ def load_config(config_path: str) -> AppConfig:
     with open(path) as f:
         raw = yaml.safe_load(f)
 
-    if not raw or "model" not in raw:
-        raise ValueError("Config must contain a 'model' section")
+    if not raw:
+        raise ValueError("Config file is empty")
+
+    has_model = "model" in raw
+    has_models = "models" in raw and isinstance(raw["models"], list) and len(raw["models"]) > 0
+
+    if not has_model and not has_models:
+        raise ValueError("Config must contain a 'model' or 'models' section")
 
     raw_server = raw.get("server", {}) or {}
-    raw_model = raw.get("model", {})
     raw_inference = raw.get("inference", {}) or {}
     raw_warmup = raw.get("warmup", {}) or {}
 
-    # Build model config — require type and input dimensions
-    if "type" not in raw_model:
-        raise ValueError("model.type is required")
-    if "input_width" not in raw_model or "input_height" not in raw_model:
-        raise ValueError("model.input_width and model.input_height are required")
-
-    model_config = ModelConfig(
-        name=raw_model.get("name", "unnamed"),
-        type=raw_model["type"],
-        backend=raw_model.get("backend", "pytorch"),
-        source=raw_model.get("source", "local"),
-        path=raw_model.get("path"),
-        version=raw_model.get("version", "1.0.0"),
-        roboflow_project=raw_model.get("roboflow_project"),
-        roboflow_version=raw_model.get("roboflow_version"),
-        input_width=raw_model["input_width"],
-        input_height=raw_model["input_height"],
-        confidence_threshold=raw_model.get("confidence_threshold", 0.5),
-        iou_threshold=raw_model.get("iou_threshold", 0.45),
-        trt_fp16=raw_model.get("trt_fp16", False),
-    )
+    # Parse primary model config
+    if has_model:
+        model_config = _parse_model_config(raw.get("model", {}))
+    else:
+        # Derive primary from first entry in models list
+        model_config = _parse_model_config(raw["models"][0])
 
     _validate_model_config(model_config)
+
+    # Parse optional models list
+    models_list: list[ModelConfig] | None = None
+    if has_models:
+        models_list = []
+        for i, raw_m in enumerate(raw["models"]):
+            try:
+                mc = _parse_model_config(raw_m)
+                _validate_model_config(mc)
+                models_list.append(mc)
+            except (ValueError, KeyError) as e:
+                raise ValueError(f"Invalid config in models[{i}]: {e}") from e
 
     server_config = ServerConfig(
         host=raw_server.get("host", "0.0.0.0"),
@@ -170,15 +207,17 @@ def load_config(config_path: str) -> AppConfig:
         model=model_config,
         inference=inference_config,
         warmup=warmup_config,
+        models=models_list,
     )
 
     logger.info(
-        "Config loaded: model=%s type=%s backend=%s %dx%d",
+        "Config loaded: model=%s type=%s backend=%s %dx%d (models=%d)",
         config.model.name,
         config.model.type,
         config.model.backend,
         config.model.input_width,
         config.model.input_height,
+        len(models_list) if models_list else 1,
     )
 
     return config

@@ -93,7 +93,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
                 )
                 detections = future.result(timeout=30.0)
             else:
-                detector = self._model_manager.get_active_model()
+                detector = self._model_manager.get_model(request.model_name)
                 detections = detector.predict(image)
         except Exception as e:
             logger.error("Inference failed: %s", e)
@@ -129,7 +129,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
 
             start = time.perf_counter()
             try:
-                detector = self._model_manager.get_active_model()
+                detector = self._model_manager.get_model(request.model_name)
                 detections = detector.predict(image)
             except Exception as e:
                 logger.error("StreamPredict inference failed: %s", e)
