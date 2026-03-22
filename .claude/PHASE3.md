@@ -230,37 +230,37 @@ services:
 ## Tests de Fase 3
 
 ### `test_metrics.py`
-- [ ] `MetricsCollector` registra latencias correctamente
-- [ ] Percentiles P50/P95/P99 son estadísticamente correctos (vs valores conocidos)
-- [ ] `/metrics` retorna JSON con estructura completa
-- [ ] Métricas se resetean correctamente después de hot-swap
-- [ ] Error rate se calcula correctamente
+- [x] `MetricsCollector` registra latencias correctamente
+- [x] Percentiles P50/P95/P99 son estadísticamente correctos (vs valores conocidos)
+- [x] `/metrics` retorna JSON con estructura completa
+- [x] Métricas se resetean correctamente después de hot-swap
+- [x] Error rate se calcula correctamente
 
 ### `test_batching.py`
-- [ ] `BatchManager` agrupa hasta `max_batch_size` requests
-- [ ] `window_timeout_ms` dispara procesamiento de batch incompleto
-- [ ] Batch_size=1 (default) funciona igual que sin batching
-- [ ] Throughput con batching >= throughput sin batching en GPU (benchmark)
+- [x] `BatchManager` agrupa hasta `max_batch_size` requests
+- [x] `window_timeout_ms` dispara procesamiento de batch incompleto
+- [x] Batch_size=1 (default) funciona igual que sin batching
+- [x] Throughput con batching >= throughput sin batching en GPU (benchmark)
 
 ### `test_concurrent_models.py`
-- [ ] Dos modelos cargados simultáneamente retornan resultados independientes
-- [ ] Request con `model_name` específico enruta al modelo correcto
-- [ ] Request sin `model_name` usa el modelo por defecto
-- [ ] Hot-swap de un modelo no afecta al otro
+- [x] Dos modelos cargados simultáneamente retornan resultados independientes
+- [x] Request con `model_name` específico enruta al modelo correcto
+- [x] Request sin `model_name` usa el modelo por defecto
+- [x] Hot-swap de un modelo no afecta al otro
 
 ### `test_load.py`
-- [ ] 30fps sostenido por 60s: latencia P99 < 50ms
-- [ ] 5 clientes concurrentes: 0 errores en 1000 requests totales
-- [ ] 10,000 inferencias: memoria GPU estable (delta < 5%)
+- [x] 30fps sostenido por 60s: latencia P99 < 50ms
+- [x] 5 clientes concurrentes: 0 errores en 1000 requests totales
+- [x] 10,000 inferencias: memoria GPU estable (delta < 5%)
 
 ---
 
 ## Definición de "Fase 3 Completa"
 
-- [ ] `/metrics` expone P50/P95/P99 en tiempo real
-- [ ] Dynamic batching habilitado y validado en benchmark
-- [ ] Concurrent model execution funcional con 2 modelos
-- [ ] Tests de carga pasan: 30fps × 60s sin errores
-- [ ] Dockerfile con multi-stage build (imagen reducida)
+- [x] `/metrics` expone P50/P95/P99 en tiempo real
+- [x] Dynamic batching habilitado y validado en benchmark
+- [x] Concurrent model execution funcional con 2 modelos
+- [x] Tests de carga pasan: 30fps × 60s sin errores
+- [x] Dockerfile con multi-stage build (imagen reducida)
 - [ ] `README.md` con guía de inicio rápido, ejemplos de uso y referencia de configuración
-- [ ] JOURNAL.md actualizado con todos los cambios relevantes de la fase
+- [x] JOURNAL.md actualizado con todos los cambios relevantes de la fase

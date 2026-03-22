@@ -120,4 +120,48 @@ Fase 2 completa: sistema de inferencia con soporte multi-modelo, streaming bidir
 
 ---
 
+## [FASE 3] 2026-03-22 — Production Readiness
+
+**Tipo:** feat
+
+**Descripción:**
+Phase 3 adds production infrastructure: in-memory metrics with sliding-window percentiles (P50/P95/P99), dynamic batching via async BatchManager, concurrent multi-model execution with model_name routing in proto, load tests (30fps×60s, 5 concurrent clients, memory stability), server hardening (input validation, request size limits, graceful shutdown), and production Docker (non-root user, healthcheck, resource limits).
+
+**Componentes implementados:**
+
+1. **MetricsCollector** — Thread-safe sliding-window collector with `record_inference()`, `record_error()`, `reset()`. Computes P50/P95/P99 percentiles, throughput FPS, error rate. Wired into both gRPC `Predict()` and `StreamPredict()`.
+
+2. **GET /metrics endpoint** — Returns full JSON with model info, inference stats (latency percentiles, throughput, errors), batching status, and GPU memory usage.
+
+3. **BatchManager** — Async queue-based batching with configurable `max_batch_size` and `window_timeout_ms`. Uses dedicated asyncio event loop on daemon thread. Bridge to sync gRPC via `asyncio.run_coroutine_threadsafe()`. StreamPredict bypasses batching for low-latency per-frame processing.
+
+4. **Concurrent model execution** — `ModelManager` refactored from single `_active_detector` to `_models: dict[str, BaseDetector]` pool. Proto updated with `model_name` field in `InferenceRequest` (backward compatible — empty = default). Config supports `models` list for multi-model mode. Client `predict()` and `stream_predict()` accept `model_name` parameter.
+
+5. **Server hardening** — Input validation (max image size configurable via `max_image_bytes`), request timeout via `request_timeout_seconds`, improved graceful shutdown with `grpc_server.stop(grace=5).wait()`.
+
+6. **Load tests** — 3 tests marked `@pytest.mark.slow`: sustained 30fps×60s streaming, 5 concurrent clients × 200 requests, 10K inference memory stability. Excluded from CI by default.
+
+7. **Production Docker** — Non-root user (`appuser`), health check (`curl /health`), resource limits (4G memory), read-only volumes for models and config.
+
+**Decisiones arquitectónicas:**
+
+- **Async BatchManager + sync gRPC bridge**: BatchManager runs on a dedicated asyncio event loop in a daemon thread. Sync gRPC threads use `asyncio.run_coroutine_threadsafe()` to submit to the queue and `.result(timeout=...)` to wait. This avoids making the gRPC service async while still benefiting from batch accumulation.
+
+- **Multi-model backward compatibility**: `AppConfig.models` is optional (`None`). Single `model` config still works. `get_active_model()` preserved as wrapper for `get_model("")`. Proto `model_name=""` routes to default model.
+
+- **batch_fn adapter loops over predict()**: The batch function calls `detector.predict(img)` for each image rather than true batch inference. This is correct for YOLO/RF-DETR which handle internal batching. A future `batch_predict()` detector method could enable stacking.
+
+**Impacto:**
+- New proto field: `model_name` in InferenceRequest (backward compatible)
+- New config fields: `models` list, `batch_window_ms`, `request_timeout_seconds`, `max_image_bytes`
+- New endpoint: `GET /metrics`
+- Breaking: `InferenceServicer` and `create_app()` require `MetricsCollector` parameter
+- New dependency: `pytest-asyncio==1.3.0`
+
+**Notas:**
+- 96+ unit tests, all passing (load tests excluded via `@pytest.mark.slow`)
+- GPU memory reporting in /metrics via `DeviceManager.get_gpu_memory()`
+
+---
+
 _Las siguientes entradas se agregarán conforme avance el desarrollo._
