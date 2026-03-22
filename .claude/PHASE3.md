@@ -262,5 +262,5 @@ services:
 - [x] Concurrent model execution funcional con 2 modelos
 - [x] Tests de carga pasan: 30fps × 60s sin errores
 - [x] Dockerfile con multi-stage build (imagen reducida)
-- [ ] `README.md` con guía de inicio rápido, ejemplos de uso y referencia de configuración
+- [x] `README.md` con guía de inicio rápido, ejemplos de uso y referencia de configuración
 - [x] JOURNAL.md actualizado con todos los cambios relevantes de la fase
