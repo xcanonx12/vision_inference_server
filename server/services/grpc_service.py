@@ -1,12 +1,15 @@
 """gRPC InferenceService implementation."""
 
+import asyncio
 import logging
 import time
+from typing import Optional
 
 import cv2
 import grpc
 import numpy as np
 
+from server.core.batch_manager import BatchManager
 from server.core.metrics_collector import MetricsCollector
 from server.core.model_manager import ModelManager
 from server.generated import detections_pb2, detections_pb2_grpc
@@ -21,9 +24,17 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
     and GetServerConfig RPCs.
     """
 
-    def __init__(self, model_manager: ModelManager, metrics_collector: MetricsCollector) -> None:
+    def __init__(
+        self,
+        model_manager: ModelManager,
+        metrics_collector: MetricsCollector,
+        batch_manager: Optional[BatchManager] = None,
+        batch_loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         self._model_manager = model_manager
         self._metrics = metrics_collector
+        self._batch_manager = batch_manager
+        self._batch_loop = batch_loop
 
     # ── Helper methods ──────────────────────────────────────────────
 
@@ -73,11 +84,17 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             )
             return detections_pb2.InferenceResponse()
 
-        # Run inference
+        # Run inference (via BatchManager if available, direct otherwise)
         start = time.perf_counter()
         try:
-            detector = self._model_manager.get_active_model()
-            detections = detector.predict(image)
+            if self._batch_manager is not None and self._batch_loop is not None:
+                future = asyncio.run_coroutine_threadsafe(
+                    self._batch_manager.submit(image), self._batch_loop
+                )
+                detections = future.result(timeout=30.0)
+            else:
+                detector = self._model_manager.get_active_model()
+                detections = detector.predict(image)
         except Exception as e:
             logger.error("Inference failed: %s", e)
             self._metrics.record_error("inference_error")

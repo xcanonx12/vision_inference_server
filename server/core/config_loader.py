@@ -44,6 +44,7 @@ class InferenceConfig:
     batch_size: int = 1
     max_batch_size: int = 8
     dynamic_batching: bool = False
+    batch_window_ms: float = 10.0
 
 
 @dataclass
@@ -155,6 +156,7 @@ def load_config(config_path: str) -> AppConfig:
         batch_size=raw_inference.get("batch_size", 1),
         max_batch_size=raw_inference.get("max_batch_size", 8),
         dynamic_batching=raw_inference.get("dynamic_batching", False),
+        batch_window_ms=raw_inference.get("batch_window_ms", 10.0),
     )
 
     warmup_config = WarmupConfig(
