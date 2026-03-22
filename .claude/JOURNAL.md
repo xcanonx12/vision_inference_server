@@ -81,4 +81,43 @@ Sistema funcional end-to-end. El servidor puede cargar YOLO11n, recibir imágene
 
 ---
 
+## [FASE 2] 2026-03-21 — Completitud: multi-modelo, streaming, hot-swap
+
+**Tipo:** feat
+
+**Descripcion:**
+Fase 2 completa: sistema de inferencia con soporte multi-modelo, streaming bidireccional, y reemplazo de modelos en caliente.
+
+**Componentes implementados:**
+
+1. **RF-DETR Detector** — Integración con la libreria rfdetr (v1.6.0). A diferencia de YOLO11, RF-DETR es autocontenido: su API `model.predict(image, threshold)` retorna `sv.Detections` directamente, sin necesidad de pre/postprocesamiento manual ni backend layer. Se soportan variantes Nano, Small, Base, Medium, Large via mapeo por nombre en config.
+
+2. **TensorRT Backend** — Backend para archivos `.engine` via ultralytics. Requiere CUDA. Sigue el mismo patrón que PyTorchBackend/ONNXBackend. Se agrego campo `trt_fp16` a ModelConfig.
+
+3. **StreamPredict bidireccional** — Implementación del RPC `StreamPredict` que procesa cada frame individualmente conforme llega y yield la respuesta inmediatamente. Frames corruptos generan respuesta vacía en vez de abortar el stream. Se extrajeron helpers compartidos con Predict para evitar duplicación.
+
+4. **Hot-Swap thread-safe** — `ModelManager.hot_swap()` carga el nuevo modelo fuera del lock (operación lenta), y solo adquiere `RLock` para el swap atómico de referencia. `get_active_model()` no usa lock — lecturas de referencia son atómicas bajo el GIL de CPython. Endpoint HTTP `POST /hot-swap` acepta config JSON.
+
+5. **Client stream_predict()** — Método de streaming en el cliente que toma un generador de frames y yield `sv.Detections` por cada respuesta. Reutiliza `_prepare_image()` y `_deserialize_response()`.
+
+**Decisiones arquitectónicas:**
+
+- **RF-DETR bypasses backend layer**: La libreria rfdetr maneja todo internamente (carga, preprocessing ImageNet, inferencia, postprocessing). No tiene sentido forzar el patrón Backend + Detector cuando rfdetr ya retorna sv.Detections. BaseDetector.backend ahora es Optional.
+
+- **Locking strategy para hot-swap**: Solo se protege el swap de referencia, no las lecturas. El GIL de CPython garantiza atomicidad en asignaciones de referencia simples. Esto evita overhead de lock en el hot path de inferencia (critical para streaming en tiempo real).
+
+- **StreamPredict graceful degradation**: Un frame corrupto no mata el stream — se emite respuesta vacía y se continúa. Diferente de Predict unario que usa context.abort() para frames inválidos.
+
+**Impacto:**
+- API: StreamPredict RPC funcional, POST /hot-swap endpoint nuevo
+- Config: nuevo campo `trt_fp16: bool`, RF-DETR con `path=None` permitido
+- Dependencias: rfdetr==1.6.0 agregado
+
+**Notas:**
+- 72 tests, todos pasando
+- TensorRT tests gated con `skipif(not torch.cuda.is_available())`
+- RF-DETR nano usado para tests (modelo más ligero, ~349MB weights auto-download)
+
+---
+
 _Las siguientes entradas se agregarán conforme avance el desarrollo._
