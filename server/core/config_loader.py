@@ -36,6 +36,7 @@ class ModelConfig:
     input_height: int = 640
     confidence_threshold: float = 0.5
     iou_threshold: float = 0.45
+    trt_fp16: bool = False
 
 
 @dataclass
@@ -138,6 +139,7 @@ def load_config(config_path: str) -> AppConfig:
         input_height=raw_model["input_height"],
         confidence_threshold=raw_model.get("confidence_threshold", 0.5),
         iou_threshold=raw_model.get("iou_threshold", 0.45),
+        trt_fp16=raw_model.get("trt_fp16", False),
     )
 
     _validate_model_config(model_config)

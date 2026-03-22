@@ -1,9 +1,11 @@
 import pytest
 import numpy as np
+import torch
 
 from server.backends.base_backend import BaseBackend
 from server.backends.pytorch_backend import PyTorchBackend
 from server.backends.onnx_backend import ONNXBackend
+from server.backends.tensorrt_backend import TensorRTBackend
 
 
 class TestBaseBackend:
@@ -37,3 +39,32 @@ class TestONNXBackend:
             ONNXBackend.is_available()
         except Exception:
             pytest.fail("is_available() raised an exception")
+
+
+class TestTensorRTBackend:
+    def test_is_available_returns_bool(self):
+        result = TensorRTBackend.is_available()
+        assert isinstance(result, bool)
+
+    def test_is_available_does_not_raise(self):
+        try:
+            TensorRTBackend.is_available()
+        except Exception:
+            pytest.fail("is_available() raised an exception")
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA")
+    def test_load_requires_cuda(self):
+        backend = TensorRTBackend()
+        assert hasattr(backend, 'load')
+        assert hasattr(backend, 'infer')
+
+    def test_load_rejects_cpu(self):
+        backend = TensorRTBackend()
+        with pytest.raises(RuntimeError, match="TensorRT backend requires CUDA device"):
+            backend.load("dummy.engine", "cpu")
+
+    def test_infer_without_load_raises(self):
+        backend = TensorRTBackend()
+        dummy = np.zeros((480, 640, 3), dtype=np.uint8)
+        with pytest.raises(RuntimeError, match="Model not loaded"):
+            backend.infer(dummy)

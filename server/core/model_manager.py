@@ -5,6 +5,7 @@ import logging
 from server.backends.base_backend import BaseBackend
 from server.backends.onnx_backend import ONNXBackend
 from server.backends.pytorch_backend import PyTorchBackend
+from server.backends.tensorrt_backend import TensorRTBackend
 from server.core.config_loader import AppConfig
 from server.core.device_manager import DeviceManager
 from server.detectors.base_detector import BaseDetector
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 BACKEND_REGISTRY: dict[str, type[BaseBackend]] = {
     "pytorch": PyTorchBackend,
     "onnx": ONNXBackend,
+    "tensorrt": TensorRTBackend,
 }
 
 DETECTOR_REGISTRY: dict[str, type[BaseDetector]] = {
