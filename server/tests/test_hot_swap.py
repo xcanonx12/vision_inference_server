@@ -109,11 +109,12 @@ class TestHotSwapHTTPEndpoint:
     @pytest.fixture(scope="module")
     def client_ready(self, base_config):
         from fastapi.testclient import TestClient
+        from server.core.metrics_collector import MetricsCollector
         from server.services.http_service import create_app
 
         mm = ModelManager(base_config)
         mm.load_model()
-        app = create_app(mm)
+        app = create_app(mm, MetricsCollector())
         return TestClient(app)
 
     def test_hot_swap_endpoint_returns_200(self, client_ready):

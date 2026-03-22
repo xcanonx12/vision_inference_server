@@ -89,6 +89,18 @@ class DeviceManager:
         # pytorch
         return self._optimal_device
 
+    def get_gpu_memory(self) -> dict:
+        """Return GPU memory usage in MB, or empty dict if no GPU."""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                used = torch.cuda.memory_allocated() / 1024 / 1024
+                total = torch.cuda.get_device_properties(0).total_memory / 1024 / 1024
+                return {"gpu_used_mb": round(used, 1), "gpu_total_mb": round(total, 1)}
+        except ImportError:
+            pass
+        return {}
+
     def get_device_info(self) -> DeviceInfo:
         cuda_name = ""
         if self._cuda_available:

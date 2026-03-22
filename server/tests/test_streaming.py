@@ -33,9 +33,11 @@ warmup:
         f.flush()
         config = load_config(f.name)
 
+    from server.core.metrics_collector import MetricsCollector
+
     mm = ModelManager(config)
     mm.load_model()
-    return InferenceServicer(mm)
+    return InferenceServicer(mm, MetricsCollector())
 
 
 def _make_request(image: np.ndarray) -> detections_pb2.InferenceRequest:

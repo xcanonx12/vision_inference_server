@@ -8,6 +8,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from server.core.config_loader import ModelConfig
+from server.core.device_manager import DeviceManager
+from server.core.metrics_collector import MetricsCollector
 from server.core.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
@@ -27,17 +29,19 @@ class HotSwapRequest(BaseModel):
     trt_fp16: bool = False
 
 
-def create_app(model_manager: ModelManager) -> FastAPI:
+def create_app(model_manager: ModelManager, metrics_collector: MetricsCollector) -> FastAPI:
     """Create and configure the FastAPI application.
 
     Args:
         model_manager: The active ModelManager instance.
+        metrics_collector: The shared MetricsCollector instance.
 
     Returns:
         Configured FastAPI app.
     """
     app = FastAPI(title="SimpleInference", version="1.0.0")
     start_time = time.time()
+    device_manager = DeviceManager()
 
     @app.get("/health")
     def health() -> dict:
@@ -52,6 +56,29 @@ def create_app(model_manager: ModelManager) -> FastAPI:
     @app.get("/config")
     def config() -> dict:
         return model_manager.get_model_info()
+
+    @app.get("/metrics")
+    def metrics() -> dict:
+        info = model_manager.get_model_info()
+        raw = metrics_collector.get_metrics()
+        return {
+            "model": info.get("model_name", ""),
+            "backend": info.get("backend", ""),
+            "device": info.get("device", ""),
+            "uptime_seconds": round(time.time() - start_time, 1),
+            "inference": {
+                "total_requests": raw["total_requests"],
+                "total_errors": raw["total_errors"],
+                "error_rate_percent": raw["error_rate_percent"],
+                "throughput_fps": raw["throughput_fps"],
+                "latency_ms": raw["latency_ms"],
+            },
+            "batching": {
+                "enabled": False,
+                "avg_batch_size": raw["avg_batch_size"],
+            },
+            "memory": device_manager.get_gpu_memory(),
+        }
 
     @app.post("/hot-swap")
     def hot_swap(req: HotSwapRequest) -> dict:

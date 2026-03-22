@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.core.config_loader import load_config
+from server.core.metrics_collector import MetricsCollector
 from server.core.model_manager import ModelManager
 from server.services.http_service import create_app
 
@@ -30,7 +31,7 @@ warmup:
 
 @pytest.fixture(scope="module")
 def client_ready(loaded_manager):
-    app = create_app(loaded_manager)
+    app = create_app(loaded_manager, MetricsCollector())
     return TestClient(app)
 
 
@@ -52,7 +53,7 @@ warmup:
     f = tmp_path / "config.yaml"
     f.write_text(config_content)
     mm = ModelManager(load_config(str(f)))
-    app = create_app(mm)
+    app = create_app(mm, MetricsCollector())
     return TestClient(app)
 
 
@@ -82,3 +83,28 @@ class TestConfigEndpoint:
         assert data["backend"] == "pytorch"
         assert data["input_width"] == 640
         assert data["input_height"] == 640
+
+
+class TestMetricsEndpoint:
+    def test_metrics_returns_full_structure(self, client_ready):
+        response = client_ready.get("/metrics")
+        assert response.status_code == 200
+        data = response.json()
+        assert "model" in data
+        assert "backend" in data
+        assert "device" in data
+        assert "uptime_seconds" in data
+        assert "inference" in data
+        inf = data["inference"]
+        assert "total_requests" in inf
+        assert "total_errors" in inf
+        assert "error_rate_percent" in inf
+        assert "throughput_fps" in inf
+        assert "latency_ms" in inf
+        lat = inf["latency_ms"]
+        assert all(k in lat for k in ("p50", "p95", "p99", "min", "max"))
+        assert "batching" in data
+        bat = data["batching"]
+        assert "enabled" in bat
+        assert "avg_batch_size" in bat
+        assert "memory" in data

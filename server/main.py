@@ -14,6 +14,7 @@ import uvicorn
 
 from server.core.config_loader import load_config
 from server.core.device_manager import DeviceManager
+from server.core.metrics_collector import MetricsCollector
 from server.core.model_manager import ModelManager
 from server.generated import detections_pb2_grpc
 from server.services.grpc_service import InferenceServicer
@@ -52,18 +53,21 @@ def serve(config_path: str = "server/config.yaml") -> None:
 
     logger.info("Model ready.")
 
+    # Metrics collector
+    metrics_collector = MetricsCollector(window_seconds=60)
+
     # gRPC server
     grpc_server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=config.server.max_workers)
     )
-    servicer = InferenceServicer(model_manager)
+    servicer = InferenceServicer(model_manager, metrics_collector)
     detections_pb2_grpc.add_InferenceServiceServicer_to_server(servicer, grpc_server)
     grpc_server.add_insecure_port(
         f"{config.server.host}:{config.server.grpc_port}"
     )
 
     # FastAPI app
-    app = create_app(model_manager)
+    app = create_app(model_manager, metrics_collector)
 
     # Graceful shutdown
     def handle_signal(signum: int, frame) -> None:

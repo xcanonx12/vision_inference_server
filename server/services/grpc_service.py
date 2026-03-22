@@ -7,6 +7,7 @@ import cv2
 import grpc
 import numpy as np
 
+from server.core.metrics_collector import MetricsCollector
 from server.core.model_manager import ModelManager
 from server.generated import detections_pb2, detections_pb2_grpc
 
@@ -20,8 +21,9 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
     and GetServerConfig RPCs.
     """
 
-    def __init__(self, model_manager: ModelManager) -> None:
+    def __init__(self, model_manager: ModelManager, metrics_collector: MetricsCollector) -> None:
         self._model_manager = model_manager
+        self._metrics = metrics_collector
 
     # ── Helper methods ──────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
         # Decode image — abort on failure for unary RPCs
         image = self._try_decode_image(request.image_data)
         if image is None:
+            self._metrics.record_error("decode_error")
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Empty or invalid image data. Ensure it is valid JPEG.",
@@ -77,10 +80,12 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             detections = detector.predict(image)
         except Exception as e:
             logger.error("Inference failed: %s", e)
+            self._metrics.record_error("inference_error")
             context.abort(grpc.StatusCode.INTERNAL, f"Inference failed: {e}")
             return detections_pb2.InferenceResponse()
 
         inference_time_ms = (time.perf_counter() - start) * 1000
+        self._metrics.record_inference(inference_time_ms, batch_size=1)
         response = self._build_detection_response(image, detections, inference_time_ms)
 
         logger.debug(
@@ -101,6 +106,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             image = self._try_decode_image(request.image_data)
             if image is None:
                 logger.warning("StreamPredict: failed to decode frame, skipping")
+                self._metrics.record_error("decode_error")
                 yield detections_pb2.InferenceResponse()
                 continue
 
@@ -110,10 +116,12 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
                 detections = detector.predict(image)
             except Exception as e:
                 logger.error("StreamPredict inference failed: %s", e)
+                self._metrics.record_error("inference_error")
                 yield detections_pb2.InferenceResponse()
                 continue
 
             inference_time_ms = (time.perf_counter() - start) * 1000
+            self._metrics.record_inference(inference_time_ms, batch_size=1)
             response = self._build_detection_response(
                 image, detections, inference_time_ms
             )
