@@ -1,0 +1,28 @@
+server:
+  host: "0.0.0.0"
+  grpc_port: 50051
+  http_port: 8080
+  max_workers: 4
+
+model:
+  name: "yolo11n"
+  version: "1.0.0"
+  type: "yolo11"
+  backend: "pytorch"
+  source: "local"
+  path: "yolo11n.pt"
+  input_width: 640
+  input_height: 640
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  # class_names: []  # optional — leave empty for pretrained COCO classes
+
+inference:
+  batch_size: 1
+  max_batch_size: 8
+  dynamic_batching: false
+
+warmup:
+  enabled: true
+  iterations: 5
+  synthetic_data: true
