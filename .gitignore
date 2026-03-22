@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+models/*.pt
+models/*.onnx
+models/*.trt
+models/*.engine
+!models/.gitkeep
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+htmlcov/
+.coverage
+.venv/
+venv/
