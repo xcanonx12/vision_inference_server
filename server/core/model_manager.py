@@ -95,6 +95,16 @@ class ModelManager:
         """Return True if a model is loaded and ready for inference."""
         return self._active_detector is not None
 
+    def _get_num_classes(self) -> int:
+        """Derive num_classes from the loaded model's metadata."""
+        if self._active_detector is None:
+            return 0
+        backend = self._active_detector._backend
+        model = getattr(backend, "_model", None)
+        if model is not None and hasattr(model, "names"):
+            return len(model.names)
+        return 0
+
     def get_model_info(self) -> dict:
         """Return model metadata for /config and GetServerConfig."""
         if self._active_detector is None:
@@ -111,5 +121,5 @@ class ModelManager:
             "device": getattr(self, "_device", "unknown"),
             "confidence_threshold": model_cfg.confidence_threshold,
             "iou_threshold": model_cfg.iou_threshold,
-            "class_names": model_cfg.class_names,
+            "num_classes": self._get_num_classes(),
         }

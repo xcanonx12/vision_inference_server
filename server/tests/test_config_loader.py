@@ -83,10 +83,6 @@ model:
   input_width: 640
   input_height: 640
   confidence_threshold: 0.6
-  class_names:
-    - "forklift"
-    - "person"
-    - "pallet"
 """
         config_file = tmp_path / "config.yaml"
         config_file.write_text(config_content)
@@ -95,24 +91,7 @@ model:
 
         assert config.model.name == "forklift-detector-v3"
         assert config.model.path == "/models/custom/forklift-v3.onnx"
-        assert config.model.class_names == ["forklift", "person", "pallet"]
-
-    def test_class_names_optional(self, tmp_path):
-        config_content = """
-model:
-  name: "yolo11n"
-  type: "yolo11"
-  backend: "pytorch"
-  source: "local"
-  path: "/models/yolo11n.pt"
-  input_width: 640
-  input_height: 640
-"""
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(config_content)
-
-        config = load_config(str(config_file))
-        assert config.model.class_names == []
+        assert config.model.confidence_threshold == 0.6
 
 
 class TestConfigLoaderValidation:

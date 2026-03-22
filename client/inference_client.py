@@ -171,19 +171,16 @@ class InferenceClient:
         xyxy = np.zeros((n, 4), dtype=np.float32)
         confidence = np.zeros(n, dtype=np.float32)
         class_id = np.zeros(n, dtype=np.int32)
-        class_names = []
 
         for i, det in enumerate(response.detections):
-            xyxy[i] = [det.x1, det.y1, det.x2, det.y2]
+            xyxy[i] = det.bbox
             confidence[i] = det.confidence
             class_id[i] = det.class_id
-            class_names.append(det.class_name)
 
         return sv.Detections(
             xyxy=xyxy,
             confidence=confidence,
             class_id=class_id,
-            data={"class_name": np.array(class_names)},
         )
 
     def close(self) -> None:

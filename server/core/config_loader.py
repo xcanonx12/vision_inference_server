@@ -1,7 +1,7 @@
 """YAML configuration loader with typed dataclasses and validation."""
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -36,7 +36,6 @@ class ModelConfig:
     input_height: int = 640
     confidence_threshold: float = 0.5
     iou_threshold: float = 0.45
-    class_names: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -139,7 +138,6 @@ def load_config(config_path: str) -> AppConfig:
         input_height=raw_model["input_height"],
         confidence_threshold=raw_model.get("confidence_threshold", 0.5),
         iou_threshold=raw_model.get("iou_threshold", 0.45),
-        class_names=raw_model.get("class_names", []) or [],
     )
 
     _validate_model_config(model_config)

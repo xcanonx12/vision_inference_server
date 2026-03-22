@@ -15,7 +15,6 @@ model:
   input_height: 640
   confidence_threshold: 0.5
   iou_threshold: 0.45
-  # class_names: []  # optional — leave empty for pretrained COCO classes
 
 inference:
   batch_size: 1

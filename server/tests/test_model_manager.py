@@ -58,6 +58,8 @@ class TestModelManager:
         assert info["input_height"] == 640
         assert "version" in info
         assert "device" in info
+        assert "num_classes" in info
+        assert info["num_classes"] == 80  # COCO classes for yolo11n
 
     def test_warmup_runs_without_error(self, config):
         mm = ModelManager(config)

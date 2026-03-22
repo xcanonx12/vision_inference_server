@@ -58,13 +58,9 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
 
         for i in range(len(detections)):
             det = detections_pb2.Detection(
-                x1=float(detections.xyxy[i][0]),
-                y1=float(detections.xyxy[i][1]),
-                x2=float(detections.xyxy[i][2]),
-                y2=float(detections.xyxy[i][3]),
+                bbox=detections.xyxy[i].tolist(),
                 confidence=float(detections.confidence[i]),
                 class_id=int(detections.class_id[i]),
-                class_name=self._get_class_name(detections, i),
             )
             response.detections.append(det)
 
@@ -96,6 +92,7 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             input_height=info.get("input_height", 0),
             version=info.get("version", ""),
             device=info.get("device", ""),
+            num_classes=info.get("num_classes", 0),
         )
 
     def _decode_image(
@@ -122,12 +119,3 @@ class InferenceServicer(detections_pb2_grpc.InferenceServiceServicer):
             return None
 
         return image
-
-    @staticmethod
-    def _get_class_name(detections, index: int) -> str:
-        """Extract class name from detections data if available."""
-        if detections.data and "class_name" in detections.data:
-            names = detections.data["class_name"]
-            if index < len(names):
-                return str(names[index])
-        return ""

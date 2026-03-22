@@ -70,18 +70,15 @@ class TestInferenceClientDeserialize:
 
     def test_deserialize_response_with_detections(self):
         c = InferenceClient()
-        # Create mock detections
         det1 = MagicMock()
-        det1.x1, det1.y1, det1.x2, det1.y2 = 10.0, 20.0, 100.0, 200.0
+        det1.bbox = [10.0, 20.0, 100.0, 200.0]
         det1.confidence = 0.95
         det1.class_id = 0
-        det1.class_name = "person"
 
         det2 = MagicMock()
-        det2.x1, det2.y1, det2.x2, det2.y2 = 50.0, 60.0, 150.0, 250.0
+        det2.bbox = [50.0, 60.0, 150.0, 250.0]
         det2.confidence = 0.85
         det2.class_id = 1
-        det2.class_name = "car"
 
         mock_response = MagicMock()
         mock_response.detections = [det1, det2]

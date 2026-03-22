@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x64\x65tections.proto\x12\x0fsimpleinference\"\x07\n\x05\x45mpty\"E\n\x10InferenceRequest\x12\x12\n\nimage_data\x18\x01 \x01(\x0c\x12\r\n\x05width\x18\x02 \x01(\x05\x12\x0e\n\x06height\x18\x03 \x01(\x05\"\x89\x01\n\x11InferenceResponse\x12.\n\ndetections\x18\x01 \x03(\x0b\x32\x1a.simpleinference.Detection\x12\x13\n\x0bimage_width\x18\x02 \x01(\x05\x12\x14\n\x0cimage_height\x18\x03 \x01(\x05\x12\x19\n\x11inference_time_ms\x18\x04 \x01(\x02\"u\n\tDetection\x12\n\n\x02x1\x18\x01 \x01(\x02\x12\n\n\x02y1\x18\x02 \x01(\x02\x12\n\n\x02x2\x18\x03 \x01(\x02\x12\n\n\x02y2\x18\x04 \x01(\x02\x12\x12\n\nconfidence\x18\x05 \x01(\x02\x12\x10\n\x08\x63lass_id\x18\x06 \x01(\x05\x12\x12\n\nclass_name\x18\x07 \x01(\t\"\x9b\x01\n\x14ServerConfigResponse\x12\x12\n\nmodel_name\x18\x01 \x01(\t\x12\x12\n\nmodel_type\x18\x02 \x01(\t\x12\x0f\n\x07\x62\x61\x63kend\x18\x03 \x01(\t\x12\x13\n\x0binput_width\x18\x04 \x01(\x05\x12\x14\n\x0cinput_height\x18\x05 \x01(\x05\x12\x0f\n\x07version\x18\x06 \x01(\t\x12\x0e\n\x06\x64\x65vice\x18\x07 \x01(\t2\x98\x02\n\x10InferenceService\x12R\n\x07Predict\x12!.simpleinference.InferenceRequest\x1a\".simpleinference.InferenceResponse\"\x00\x12\\\n\rStreamPredict\x12!.simpleinference.InferenceRequest\x1a\".simpleinference.InferenceResponse\"\x00(\x01\x30\x01\x12R\n\x0fGetServerConfig\x12\x16.simpleinference.Empty\x1a%.simpleinference.ServerConfigResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x64\x65tections.proto\x12\x0fsimpleinference\"\x07\n\x05\x45mpty\"E\n\x10InferenceRequest\x12\x12\n\nimage_data\x18\x01 \x01(\x0c\x12\r\n\x05width\x18\x02 \x01(\x05\x12\x0e\n\x06height\x18\x03 \x01(\x05\"\x89\x01\n\x11InferenceResponse\x12.\n\ndetections\x18\x01 \x03(\x0b\x32\x1a.simpleinference.Detection\x12\x13\n\x0bimage_width\x18\x02 \x01(\x05\x12\x14\n\x0cimage_height\x18\x03 \x01(\x05\x12\x19\n\x11inference_time_ms\x18\x04 \x01(\x02\"?\n\tDetection\x12\x0c\n\x04\x62\x62ox\x18\x01 \x03(\x02\x12\x12\n\nconfidence\x18\x02 \x01(\x02\x12\x10\n\x08\x63lass_id\x18\x03 \x01(\x05\"\xb0\x01\n\x14ServerConfigResponse\x12\x12\n\nmodel_name\x18\x01 \x01(\t\x12\x12\n\nmodel_type\x18\x02 \x01(\t\x12\x0f\n\x07\x62\x61\x63kend\x18\x03 \x01(\t\x12\x13\n\x0binput_width\x18\x04 \x01(\x05\x12\x14\n\x0cinput_height\x18\x05 \x01(\x05\x12\x0f\n\x07version\x18\x06 \x01(\t\x12\x0e\n\x06\x64\x65vice\x18\x07 \x01(\t\x12\x13\n\x0bnum_classes\x18\x08 \x01(\x05\x32\x98\x02\n\x10InferenceService\x12R\n\x07Predict\x12!.simpleinference.InferenceRequest\x1a\".simpleinference.InferenceResponse\"\x00\x12\\\n\rStreamPredict\x12!.simpleinference.InferenceRequest\x1a\".simpleinference.InferenceResponse\"\x00(\x01\x30\x01\x12R\n\x0fGetServerConfig\x12\x16.simpleinference.Empty\x1a%.simpleinference.ServerConfigResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,9 +38,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_INFERENCERESPONSE']._serialized_start=118
   _globals['_INFERENCERESPONSE']._serialized_end=255
   _globals['_DETECTION']._serialized_start=257
-  _globals['_DETECTION']._serialized_end=374
-  _globals['_SERVERCONFIGRESPONSE']._serialized_start=377
-  _globals['_SERVERCONFIGRESPONSE']._serialized_end=532
-  _globals['_INFERENCESERVICE']._serialized_start=535
-  _globals['_INFERENCESERVICE']._serialized_end=815
+  _globals['_DETECTION']._serialized_end=320
+  _globals['_SERVERCONFIGRESPONSE']._serialized_start=323
+  _globals['_SERVERCONFIGRESPONSE']._serialized_end=499
+  _globals['_INFERENCESERVICE']._serialized_start=502
+  _globals['_INFERENCESERVICE']._serialized_end=782
 # @@protoc_insertion_point(module_scope)
