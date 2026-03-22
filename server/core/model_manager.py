@@ -1,12 +1,13 @@
 """Model lifecycle manager: load, warmup, and expose active detector."""
 
 import logging
+import threading
 
 from server.backends.base_backend import BaseBackend
 from server.backends.onnx_backend import ONNXBackend
 from server.backends.pytorch_backend import PyTorchBackend
 from server.backends.tensorrt_backend import TensorRTBackend
-from server.core.config_loader import AppConfig
+from server.core.config_loader import AppConfig, ModelConfig, _validate_model_config
 from server.core.device_manager import DeviceManager
 from server.detectors.base_detector import BaseDetector
 from server.detectors.rfdetr_detector import RFDETRDetector
@@ -38,6 +39,7 @@ class ModelManager:
         self._config = config
         self._device_manager = DeviceManager()
         self._active_detector: BaseDetector | None = None
+        self._swap_lock = threading.RLock()
 
     def load_model(self) -> None:
         """Load the model specified in config.
@@ -75,6 +77,55 @@ class ModelManager:
             "Model loaded: %s (%s/%s) on %s",
             model_cfg.name, model_cfg.type, model_cfg.backend, device,
         )
+
+    def hot_swap(self, new_model_cfg: ModelConfig) -> None:
+        """Replace the active model without server restart.
+
+        Validates config, loads the new model (slow, outside lock),
+        then atomically swaps the active detector under the lock.
+        Thread-safe -- concurrent hot_swap calls are serialized.
+        """
+        # Validate before doing expensive work
+        _validate_model_config(new_model_cfg)
+
+        logger.info(
+            "Hot-swap starting: %s (%s/%s)",
+            new_model_cfg.name, new_model_cfg.type, new_model_cfg.backend,
+        )
+
+        device = self._device_manager.get_device_for_backend(new_model_cfg.backend)
+
+        detector_cls = DETECTOR_REGISTRY.get(new_model_cfg.type)
+        if detector_cls is None:
+            raise ValueError(f"Unknown model type: {new_model_cfg.type}")
+
+        # Load new model outside the lock (slow operation)
+        if new_model_cfg.type == "rfdetr":
+            new_detector = detector_cls(new_model_cfg)
+        else:
+            backend_cls = BACKEND_REGISTRY.get(new_model_cfg.backend)
+            if backend_cls is None:
+                raise ValueError(f"Unknown backend: {new_model_cfg.backend}")
+            if not backend_cls.is_available():
+                raise RuntimeError(
+                    f"Backend '{new_model_cfg.backend}' not available"
+                )
+            backend = backend_cls()
+            backend.load(new_model_cfg.path, device)
+            new_detector = detector_cls(new_model_cfg, backend)
+
+        # Atomic swap under lock -- only protects the reference update
+        with self._swap_lock:
+            self._active_detector = new_detector
+            self._config = AppConfig(
+                server=self._config.server,
+                model=new_model_cfg,
+                inference=self._config.inference,
+                warmup=self._config.warmup,
+            )
+            self._device = device
+
+        logger.info("Hot-swap complete: %s", new_model_cfg.name)
 
     def warmup(self) -> None:
         """Run warmup on the active detector."""

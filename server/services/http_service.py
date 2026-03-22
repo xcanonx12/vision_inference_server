@@ -2,12 +2,29 @@
 
 import logging
 import time
+from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
+from server.core.config_loader import ModelConfig
 from server.core.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
+
+
+class HotSwapRequest(BaseModel):
+    name: str
+    type: str
+    backend: str = "pytorch"
+    source: str = "local"
+    path: Optional[str] = None
+    version: str = "1.0.0"
+    input_width: int = 640
+    input_height: int = 640
+    confidence_threshold: float = 0.5
+    iou_threshold: float = 0.45
+    trt_fp16: bool = False
 
 
 def create_app(model_manager: ModelManager) -> FastAPI:
@@ -35,5 +52,26 @@ def create_app(model_manager: ModelManager) -> FastAPI:
     @app.get("/config")
     def config() -> dict:
         return model_manager.get_model_info()
+
+    @app.post("/hot-swap")
+    def hot_swap(req: HotSwapRequest) -> dict:
+        new_cfg = ModelConfig(
+            name=req.name,
+            type=req.type,
+            backend=req.backend,
+            source=req.source,
+            path=req.path,
+            version=req.version,
+            input_width=req.input_width,
+            input_height=req.input_height,
+            confidence_threshold=req.confidence_threshold,
+            iou_threshold=req.iou_threshold,
+            trt_fp16=req.trt_fp16,
+        )
+        try:
+            model_manager.hot_swap(new_cfg)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "swapped", "model": req.name}
 
     return app
