@@ -8,6 +8,7 @@ from server.backends.pytorch_backend import PyTorchBackend
 from server.core.config_loader import AppConfig
 from server.core.device_manager import DeviceManager
 from server.detectors.base_detector import BaseDetector
+from server.detectors.rfdetr_detector import RFDETRDetector
 from server.detectors.yolo11_detector import YOLO11Detector
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ BACKEND_REGISTRY: dict[str, type[BaseBackend]] = {
 
 DETECTOR_REGISTRY: dict[str, type[BaseDetector]] = {
     "yolo11": YOLO11Detector,
+    "rfdetr": RFDETRDetector,
 }
 
 
@@ -43,29 +45,30 @@ class ModelManager:
         """
         model_cfg = self._config.model
 
-        # Resolve backend
-        backend_cls = BACKEND_REGISTRY.get(model_cfg.backend)
-        if backend_cls is None:
-            raise ValueError(f"Unknown backend: {model_cfg.backend}")
-
-        if not backend_cls.is_available():
-            raise RuntimeError(
-                f"Backend '{model_cfg.backend}' is not available. "
-                "Check that the required packages are installed."
-            )
-
-        backend = backend_cls()
-        device = self._device_manager.get_device_for_backend(model_cfg.backend)
-        backend.load(model_cfg.path, device)
-
-        # Resolve detector
         detector_cls = DETECTOR_REGISTRY.get(model_cfg.type)
         if detector_cls is None:
             raise ValueError(f"Unknown model type: {model_cfg.type}")
 
-        self._active_detector = detector_cls(model_cfg, backend)
-        self._device = device
+        device = self._device_manager.get_device_for_backend(model_cfg.backend)
 
+        if model_cfg.type == "rfdetr":
+            # RF-DETR is self-contained — no backend needed
+            self._active_detector = detector_cls(model_cfg)
+        else:
+            # Standard backend flow (YOLO11, etc.)
+            backend_cls = BACKEND_REGISTRY.get(model_cfg.backend)
+            if backend_cls is None:
+                raise ValueError(f"Unknown backend: {model_cfg.backend}")
+            if not backend_cls.is_available():
+                raise RuntimeError(
+                    f"Backend '{model_cfg.backend}' is not available. "
+                    "Check that the required packages are installed."
+                )
+            backend = backend_cls()
+            backend.load(model_cfg.path, device)
+            self._active_detector = detector_cls(model_cfg, backend)
+
+        self._device = device
         logger.info(
             "Model loaded: %s (%s/%s) on %s",
             model_cfg.name, model_cfg.type, model_cfg.backend, device,
@@ -99,6 +102,10 @@ class ModelManager:
         """Derive num_classes from the loaded model's metadata."""
         if self._active_detector is None:
             return 0
+        # RF-DETR: detector exposes num_classes directly
+        if hasattr(self._active_detector, "num_classes"):
+            return self._active_detector.num_classes
+        # YOLO: backend model has .names dict
         backend = self._active_detector._backend
         model = getattr(backend, "_model", None)
         if model is not None and hasattr(model, "names"):

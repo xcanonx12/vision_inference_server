@@ -18,7 +18,7 @@ class BaseDetector(ABC):
     Output is always sv.Detections.
     """
 
-    def __init__(self, config: ModelConfig, backend: BaseBackend) -> None:
+    def __init__(self, config: ModelConfig, backend: BaseBackend | None = None) -> None:
         self._config = config
         self._backend = backend
 
