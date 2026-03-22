@@ -44,4 +44,41 @@ Toda la documentación base está creada. El siguiente paso es implementar Fase 
 
 ---
 
+## [FASE 1] 2026-03-21 — Implementación completa de fundamentos
+
+**Tipo:** feat
+
+**Descripción:**
+Implementación end-to-end de la Fase 1: servidor gRPC + FastAPI, YOLO11 detector con backend PyTorch, cliente portable, y configuración Docker.
+
+**Componentes implementados:**
+- `detections.proto` con Predict, StreamPredict (stub), GetServerConfig RPCs
+- Config loader con dataclasses tipados y validación YAML
+- Device manager con detección CPU/CUDA y cadena de fallback
+- Backend layer (BaseBackend ABC, PyTorchBackend, ONNXBackend) usando ultralytics
+- BaseDetector ABC + YOLO11Detector con salida `sv.Detections`
+- ModelManager con registros extensibles de backends y detectores
+- gRPC InferenceServicer con manejo de errores via context.abort
+- FastAPI con /health (ready/loading) y /config
+- Main entrypoint con gRPC + FastAPI concurrentes y graceful shutdown
+- InferenceClient portable con connect (espera activa), fetch_config, predict
+- Dockerfile multi-stage + docker-compose.yml
+
+**Decisión: Backend retorna objetos nativos, no np.array wrapper**
+Los backends retornan listas de ultralytics Results directamente en vez de envolverlos en `np.array(results, dtype=object)`, ya que esto perdía la interfaz del objeto Results necesaria para `sv.Detections.from_ultralytics()`.
+
+**Decisión: ModelConfig soporta modelos custom/fine-tuned**
+`class_names` es una lista opcional (default vacía). `name` es freeform. `path` acepta cualquier archivo compatible. No se valida contra nombres de modelos pretrained.
+
+**Impacto:**
+Sistema funcional end-to-end. El servidor puede cargar YOLO11n, recibir imágenes vía gRPC, y retornar `sv.Detections`. El cliente puede conectarse, sincronizar config, y hacer inferencia.
+
+**Notas:**
+- 50 tests, todos pasando
+- Cobertura: 84% (sobre el mínimo de 80%)
+- StreamPredict definido en proto pero stubbed como UNIMPLEMENTED (Fase 2)
+- Hot-swap preparado en ModelManager pero no implementado (Fase 2)
+
+---
+
 _Las siguientes entradas se agregarán conforme avance el desarrollo._
