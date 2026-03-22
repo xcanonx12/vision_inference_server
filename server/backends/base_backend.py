@@ -1,6 +1,7 @@
 """Abstract base class for inference backends."""
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
@@ -17,7 +18,7 @@ class BaseBackend(ABC):
         ...
 
     @abstractmethod
-    def infer(self, input_data: np.ndarray) -> np.ndarray:
+    def infer(self, input_data: np.ndarray) -> Any:
         """Run inference on input data. Returns raw output."""
         ...
 

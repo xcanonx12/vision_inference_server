@@ -35,20 +35,19 @@ class ONNXBackend(BaseBackend):
             self._model.to(device)
         self._device = device
 
-    def infer(self, input_data: np.ndarray) -> np.ndarray:
+    def infer(self, input_data: np.ndarray) -> list:
         """Run inference on a BGR image.
 
         Args:
             input_data: BGR image as numpy array (H, W, 3).
 
         Returns:
-            Raw ultralytics Results object stored as object array.
+            List of ultralytics Results objects.
         """
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
 
-        results = self._model(input_data, verbose=False)
-        return np.array(results, dtype=object)
+        return self._model(input_data, verbose=False)
 
     @classmethod
     def is_available(cls) -> bool:
