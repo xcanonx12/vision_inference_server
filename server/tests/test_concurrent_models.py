@@ -17,18 +17,18 @@ def multi_model_config():
         server=ServerConfig(),
         model=ModelConfig(
             name="detector", type="yolo11", backend="pytorch",
-            path="yolo11n.pt", input_width=640, input_height=640,
+            path="models/yolo11n.pt", input_width=640, input_height=640,
         ),
         inference=InferenceConfig(),
         warmup=WarmupConfig(enabled=False),
         models=[
             ModelConfig(
                 name="detector", type="yolo11", backend="pytorch",
-                path="yolo11n.pt", input_width=640, input_height=640,
+                path="models/yolo11n.pt", input_width=640, input_height=640,
             ),
             ModelConfig(
                 name="small-det", type="yolo11", backend="pytorch",
-                path="yolo11n.pt", input_width=320, input_height=320,
+                path="models/yolo11n.pt", input_width=320, input_height=320,
             ),
         ],
     )
@@ -63,7 +63,7 @@ class TestConcurrentModels:
         original_small = loaded_multi_manager.get_model("small-det")
         new_cfg = ModelConfig(
             name="detector", type="yolo11", backend="pytorch",
-            path="yolo11n.pt", input_width=640, input_height=640,
+            path="models/yolo11n.pt", input_width=640, input_height=640,
         )
         loaded_multi_manager.hot_swap(new_cfg)
         assert loaded_multi_manager.get_model("small-det") is original_small

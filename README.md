@@ -40,8 +40,13 @@ curl http://localhost:8080/health
 python -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies
+# Install dependencies (installs CPU torch by default)
 pip install -r server/requirements.txt
+
+# GPU (optional): reinstall the CUDA torch build matching your driver.
+# For CUDA 12.x drivers (e.g. RTX laptops):
+pip install --reinstall torch==2.11.0 torchvision==0.26.0 \
+  --index-url https://download.pytorch.org/whl/cu128
 
 # Compile proto (only needed once, or after proto changes)
 python -m grpc_tools.protoc \
@@ -120,6 +125,7 @@ for detections in client.stream_predict(camera_feed(), model_name="detector"):
 with InferenceClient(host="localhost", port=50051) as client:
     client.connect()
     client.fetch_config()
+    frame = cv2.imread("image.jpg")
     detections = client.predict(frame)
 ```
 
@@ -161,12 +167,14 @@ Edit `server/config.yaml` before starting the server.
 | `type` | `"yolo11"` | Model architecture: `yolo11` or `rfdetr` |
 | `backend` | `"pytorch"` | Inference backend: `pytorch`, `onnx`, or `tensorrt` |
 | `source` | `"local"` | Weight source: `local` or `roboflow` |
-| `path` | `"yolo11n.pt"` | Path to weights file (`.pt`, `.onnx`, or `.engine`) |
+| `path` | `"models/yolo11n.pt"` | Path to weights file (`.pt`, `.onnx`, `.engine`, or `.pth`). Relative to repo root. If the file is a known pretrained name (e.g. `yolo11n.pt`, `rf-detr-nano.pth`) and missing, it is auto-downloaded to this path. |
 | `input_width` | `640` | Model input width (pixels) |
 | `input_height` | `640` | Model input height (pixels) |
 | `confidence_threshold` | `0.5` | Minimum detection confidence |
 | `iou_threshold` | `0.45` | NMS IoU threshold |
 | `trt_fp16` | `false` | Enable FP16 precision for TensorRT backend |
+| `roboflow_project` | `null` | Roboflow project ID (required when `source: roboflow`) |
+| `roboflow_version` | `null` | Roboflow model version (required when `source: roboflow`) |
 
 ### `inference`
 
@@ -194,7 +202,7 @@ models:
   - name: "detector"
     type: "yolo11"
     backend: "pytorch"
-    path: "yolo11n.pt"
+    path: "models/yolo11n.pt"
     input_width: 640
     input_height: 640
     confidence_threshold: 0.5
@@ -203,7 +211,7 @@ models:
   - name: "classifier"
     type: "yolo11"
     backend: "onnx"
-    path: "yolo11n-cls.onnx"
+    path: "models/yolo11n-cls.onnx"
     input_width: 224
     input_height: 224
     confidence_threshold: 0.5
@@ -328,7 +336,9 @@ Returns inference statistics with sliding-window latency percentiles.
     "latency_ms": {
       "p50": 18.3,
       "p95": 24.1,
-      "p99": 31.7
+      "p99": 31.7,
+      "min": 8.2,
+      "max": 45.6
     }
   },
   "batching": {
@@ -336,8 +346,8 @@ Returns inference statistics with sliding-window latency percentiles.
     "avg_batch_size": 1.0
   },
   "memory": {
-    "gpu_allocated_mb": 512.0,
-    "gpu_reserved_mb": 1024.0
+    "gpu_used_mb": 512.0,
+    "gpu_total_mb": 8192.0
   }
 }
 ```
@@ -413,15 +423,37 @@ model:
   type: "yolo11"
   backend: "pytorch"
   source: "local"
-  path: "/models/my-detector.pt"
+  path: "models/my-detector.pt"
+```
+
+#### RF-DETR
+
+RF-DETR is self-contained (the `rfdetr` library handles loading and pre/post-processing). Point `path` at a `.pth` checkpoint; a known pretrained name is auto-downloaded to that path if missing.
+
+```yaml
+model:
+  name: "rfdetr-nano"
+  type: "rfdetr"
+  backend: "pytorch"
+  source: "local"
+  path: "models/rf-detr-nano.pth"
+  input_width: 384
+  input_height: 384
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
 ```
 
 #### Roboflow-hosted models
 
 ```yaml
 model:
+  name: "my-detector"
+  type: "yolo11"
   source: "roboflow"
-  name: "my-project/3"  # workspace/project-id/version
+  roboflow_project: "my-project"
+  roboflow_version: 3
+  input_width: 640
+  input_height: 640
 ```
 
 Set `ROBOFLOW_API_KEY` in the environment (or in a `.env` file at the project root).
@@ -453,17 +485,14 @@ Requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-nat
 ```bash
 source .venv/bin/activate
 
-# Unit tests (no GPU required)
+# Unit tests
 pytest server/tests/ client/tests/ -v -m "not slow"
 
 # With coverage
 pytest server/tests/ client/tests/ --cov=server --cov=client --cov-report=term-missing
 
-# Integration tests (requires server running on localhost:50051)
-pytest client/tests/test_integration.py -v
-
 # Load / slow tests
-pytest -m slow -v
+pytest server/tests/test_load.py -m slow -v
 ```
 
 ---
@@ -471,7 +500,7 @@ pytest -m slow -v
 ## Project Structure
 
 ```
-lucci_inference/
+inference_server/
 ├── server/
 │   ├── main.py               # Server entrypoint
 │   ├── config.yaml           # Default configuration

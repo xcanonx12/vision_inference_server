@@ -13,7 +13,7 @@ model:
   type: "yolo11"
   backend: "pytorch"
   source: "local"
-  path: "yolo11n.pt"
+  path: "models/yolo11n.pt"
   input_width: 640
   input_height: 640
   confidence_threshold: 0.25
@@ -43,7 +43,7 @@ class TestHotSwap:
             type="yolo11",
             backend="pytorch",
             source="local",
-            path="yolo11n.pt",
+            path="models/yolo11n.pt",
             input_width=640,
             input_height=640,
             confidence_threshold=0.3,
@@ -59,7 +59,7 @@ class TestHotSwap:
             type="yolo11",
             backend="pytorch",
             source="local",
-            path="yolo11n.pt",
+            path="models/yolo11n.pt",
             input_width=640,
             input_height=640,
             confidence_threshold=0.8,
@@ -88,7 +88,7 @@ class TestHotSwap:
             try:
                 new_cfg = ModelConfig(
                     name="yolo11n", type="yolo11", backend="pytorch",
-                    source="local", path="yolo11n.pt",
+                    source="local", path="models/yolo11n.pt",
                     input_width=640, input_height=640,
                 )
                 mm.hot_swap(new_cfg)
@@ -123,7 +123,7 @@ class TestHotSwapHTTPEndpoint:
             "type": "yolo11",
             "backend": "pytorch",
             "source": "local",
-            "path": "yolo11n.pt",
+            "path": "models/yolo11n.pt",
             "input_width": 640,
             "input_height": 640,
         }

@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 .env
 models/*.pt
+models/*.pth
 models/*.onnx
 models/*.trt
 models/*.engine
@@ -15,3 +16,8 @@ htmlcov/
 .coverage
 .venv/
 venv/
+
+# Local dev / planning artifacts (kept locally, excluded from delivery)
+.claude/
+docs/superpowers/
+*.original.md

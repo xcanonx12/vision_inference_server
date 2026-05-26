@@ -23,7 +23,7 @@ class TestPyTorchBackend:
 
     def test_load_and_infer_yolo11n(self, synthetic_image):
         backend = PyTorchBackend()
-        backend.load("yolo11n.pt", "cpu")
+        backend.load("models/yolo11n.pt", "cpu")
         result = backend.infer(synthetic_image)
         assert isinstance(result, list)
         assert len(result) > 0

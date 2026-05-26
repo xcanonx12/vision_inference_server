@@ -15,7 +15,7 @@ model:
   type: "yolo11"
   backend: "pytorch"
   source: "local"
-  path: "yolo11n.pt"
+  path: "models/yolo11n.pt"
   input_width: 640
   input_height: 640
 warmup:
@@ -44,7 +44,7 @@ model:
   type: "yolo11"
   backend: "pytorch"
   source: "local"
-  path: "yolo11n.pt"
+  path: "models/yolo11n.pt"
   input_width: 640
   input_height: 640
 warmup:

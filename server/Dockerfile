@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install build dependencies and compile proto
 COPY server/requirements.txt .
-RUN pip install --no-cache-dir grpcio-tools==1.71.0
+RUN pip install --no-cache-dir grpcio-tools==1.78.0
 
 COPY server/proto/ server/proto/
 RUN mkdir -p server/generated && \
