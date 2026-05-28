@@ -24,6 +24,11 @@ FROM python:3.11-slim-bookworm AS production
 
 WORKDIR /app
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    CONFIG_PATH=server/config.yaml \
+    LOG_LEVEL=INFO
+
 # Install system dependencies for OpenCV + curl for healthcheck
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libgl1 libglib2.0-0 curl && \
@@ -45,5 +50,8 @@ RUN useradd --create-home appuser
 USER appuser
 
 EXPOSE 50051 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=30s \
+    CMD curl -f http://localhost:8080/health || exit 1
 
 CMD ["python", "-m", "server.main"]

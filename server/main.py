@@ -5,6 +5,7 @@ Launches gRPC and FastAPI servers concurrently with graceful shutdown.
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 import threading
@@ -23,8 +24,10 @@ from server.generated import detections_pb2_grpc
 from server.services.grpc_service import InferenceServicer
 from server.services.http_service import create_app
 
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -138,10 +141,14 @@ def serve(config_path: str = "server/config.yaml") -> None:
         app,
         host=config.server.host,
         port=config.server.http_port,
-        log_level="info",
+        log_level=LOG_LEVEL.lower(),
     )
 
 
 if __name__ == "__main__":
-    config_path = sys.argv[1] if len(sys.argv) > 1 else "server/config.yaml"
+    # Precedence: CLI arg > CONFIG_PATH env var > default.
+    if len(sys.argv) > 1:
+        config_path = sys.argv[1]
+    else:
+        config_path = os.environ.get("CONFIG_PATH", "server/config.yaml")
     serve(config_path)

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 VALID_BACKENDS = ("pytorch", "onnx", "tensorrt")
 VALID_MODEL_TYPES = ("yolo11", "rfdetr")
-VALID_SOURCES = ("local", "roboflow")
+VALID_SOURCES = ("local",)
 
 
 @dataclass
@@ -32,8 +32,6 @@ class ModelConfig:
     source: str = "local"
     path: Optional[str] = None
     version: str = "1.0.0"
-    roboflow_project: Optional[str] = None
-    roboflow_version: Optional[int] = None
     input_width: int = 640
     input_height: int = 640
     confidence_threshold: float = 0.5
@@ -85,16 +83,6 @@ def _validate_model_config(model: ModelConfig) -> None:
     if model.source == "local" and not model.path and model.type != "rfdetr":
         raise ValueError("model.path is required when source is 'local'")
 
-    if model.source == "roboflow":
-        if not model.roboflow_project:
-            raise ValueError(
-                "model.roboflow_project is required when source is 'roboflow'"
-            )
-        if model.roboflow_version is None:
-            raise ValueError(
-                "model.roboflow_version is required when source is 'roboflow'"
-            )
-
 
 def _parse_model_config(raw_model: dict) -> ModelConfig:
     """Parse a ModelConfig from a raw dict.
@@ -120,8 +108,6 @@ def _parse_model_config(raw_model: dict) -> ModelConfig:
         source=raw_model.get("source", "local"),
         path=raw_model.get("path"),
         version=raw_model.get("version", "1.0.0"),
-        roboflow_project=raw_model.get("roboflow_project"),
-        roboflow_version=raw_model.get("roboflow_version"),
         input_width=raw_model["input_width"],
         input_height=raw_model["input_height"],
         confidence_threshold=raw_model.get("confidence_threshold", 0.5),

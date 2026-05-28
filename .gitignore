@@ -17,7 +17,8 @@ htmlcov/
 .venv/
 venv/
 
-# Local dev / planning artifacts (kept locally, excluded from delivery)
-.claude/
+# Local planning / dev artifacts
 docs/superpowers/
+.claude/
+
 *.original.md

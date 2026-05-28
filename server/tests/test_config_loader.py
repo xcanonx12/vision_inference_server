@@ -147,13 +147,14 @@ model:
         with pytest.raises((ValueError, Exception)):
             load_config(str(config_file))
 
-    def test_roboflow_source_requires_project_fields(self, tmp_path):
+    def test_invalid_source_raises(self, tmp_path):
         config_content = """
 model:
   name: "test"
   type: "yolo11"
   backend: "pytorch"
-  source: "roboflow"
+  source: "unknown"
+  path: "models/test.pt"
   input_width: 640
   input_height: 640
 """
