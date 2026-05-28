@@ -3,7 +3,7 @@ FROM python:3.11-slim-bookworm AS builder
 WORKDIR /app
 
 # Install build dependencies and compile proto
-COPY server/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir grpcio-tools==1.78.0
 
 COPY server/proto/ server/proto/
@@ -35,7 +35,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY server/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy generated proto files from builder
